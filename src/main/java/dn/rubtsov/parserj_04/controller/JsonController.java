@@ -1,5 +1,5 @@
 package dn.rubtsov.parserj_04.controller;
-import dn.rubtsov.parserj_04.processor.DBUtils;
+
 import dn.rubtsov.parserj_04.processor.ParserJson;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,17 +17,13 @@ public class JsonController {
 
     @Autowired
     private ParserJson parserJson;
-    @Autowired
-    private DBUtils dbUtils;
+
     @PostMapping("/upload")
     public ResponseEntity<String> uploadJson(@RequestParam("file") MultipartFile file) {
         if(file.isEmpty()) {
             log.error("Прислали пустой файл");
             throw new IllegalArgumentException();
         }
-        // Удаляем и вновь создаем таблицу БД
-        dbUtils.dropTableIfExists("message_db");
-        dbUtils.createTableIfNotExists("message_db");
 
         try {
             // Преобразуем содержимое файла в строку
@@ -39,7 +35,7 @@ public class JsonController {
             return new ResponseEntity<>("JSON данные успешно обработаны.", HttpStatus.OK);
         } catch (IOException e) {
             log.error("Ошибка при чтении файла: {}", e.getMessage(), e);
-            return new ResponseEntity<>("Ошибка при чтении файла.", HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Ошибка при чтении файла.", HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
             return new ResponseEntity<>("Ошибка при обработке файла.", HttpStatus.INTERNAL_SERVER_ERROR);
