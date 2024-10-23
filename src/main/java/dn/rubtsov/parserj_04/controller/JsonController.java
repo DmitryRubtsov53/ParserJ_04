@@ -1,5 +1,6 @@
 package dn.rubtsov.parserj_04.controller;
 
+import dn.rubtsov.parserj_04.exception.EmptyFileException;
 import dn.rubtsov.parserj_04.processor.ParserJson;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,7 @@ public class JsonController {
     public ResponseEntity<String> uploadJson(@RequestParam("file") MultipartFile file) {
         if(file.isEmpty()) {
             log.error("Прислали пустой файл");
-            throw new IllegalArgumentException();
+            throw new EmptyFileException("Файл не должен быть пустым");
         }
 
         try {
@@ -33,9 +34,11 @@ public class JsonController {
            parserJson.processJson(jsonContent,"message_db");
 
             return new ResponseEntity<>("JSON данные успешно обработаны.", HttpStatus.OK);
+
         } catch (IOException e) {
             log.error("Ошибка при чтении файла: {}", e.getMessage(), e);
             return new ResponseEntity<>("Ошибка при чтении файла.", HttpStatus.BAD_REQUEST);
+
         } catch (Exception e) {
             log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
             return new ResponseEntity<>("Ошибка при обработке файла.", HttpStatus.INTERNAL_SERVER_ERROR);

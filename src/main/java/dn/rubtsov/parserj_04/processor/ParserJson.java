@@ -23,7 +23,7 @@ public class ParserJson {
     @Autowired
     JsonProducer jsonProducer;
     @Autowired
-    DBUtils dbUtils;
+    DBService dbService;
     @Autowired
     public ParserJson(MappingConfiguration mappingConfiguration) {
         this.mappingConfiguration = mappingConfiguration;
@@ -41,13 +41,6 @@ public class ParserJson {
         String messageId = rootNode.at(mappingConfiguration.getFieldMappings().get("messageId")).asText(null);
         String productId = rootNode.at(mappingConfiguration.getFieldMappings().get("productId")).asText(null);
 
-        // Проверяем обязательные поля
-        if ( productId == null) {
-            log.info("Забрали строку с productId = {}", productId);
-            log.warn("Пропускаем запись: обязательные поля не заполнены.");
-            return; 
-        }
-
         // Обрабатываем массив registers
         JsonNode registersNode = rootNode.at(mappingConfiguration.getFieldMappings().get("registers"));
         if (registersNode.isArray()) {
@@ -60,11 +53,9 @@ public class ParserJson {
                 record.put("registerType", register.at(mappingConfiguration.getFieldMappings().get("registerType")).asText(null));
                 record.put("restIn", register.at(mappingConfiguration.getFieldMappings().get("restIn")).asText(null));
 
-                // Проверяем наличие обязательных полей перед добавлением записи
-                if (record.get("registerType") == null || record.get("restIn") == null) {
-                    log.info("Забрали строку с registerType = {}, restIn = {}",record.get("registerType"),record.get("restIn"));
-                    log.warn("Пропускаем запись: обязательные поля не заполнены.");
-                    continue; 
+                // Проверка обязательных полей
+                if (!checkingRequiredFields(record)) {
+                    continue;
                 }
                 // Добавляем запись в список
                 records.add(record);
@@ -75,7 +66,7 @@ public class ParserJson {
 
         // Обработка для вставки в базу данных
         for (Map<String, Object> record : records) {
-            dbUtils.insertRecords(record, tableName);
+            dbService.insertRecords(record, tableName);
         }
     }
 
@@ -86,13 +77,13 @@ public class ParserJson {
     public void MessageDBToJson() {
         try {
             // Получаем требуемые данные из базы
-            Map<String,Object> messageDB = dbUtils.getAndUpdateFirstRecordWithDispatchStatus();
+            Map<String,Object> messageDB = dbService.getAndUpdateFirstRecordWithDispatchStatus();
             if (messageDB.isEmpty()) {
                 log.info("Нет данных для обработки.");
                 return;
             }
 
-            // Читаем шаблон JSON из файла
+            // Читаем шаблон JSON из файла --- readTempleFromFile
             ObjectMapper objectMapper = new ObjectMapper();
             File jsonFile = Paths.get("src", "main", "resources", "test2.json").toFile();
 
@@ -109,6 +100,7 @@ public class ParserJson {
 
             // Преобразуем итоговый объект JsonNode обратно в строку
             String json = objectMapper.writeValueAsString(jsonTemplate);
+
             log.info("Сообщение: {}", json);
             jsonProducer.sendMessage(json);
 
@@ -120,7 +112,7 @@ public class ParserJson {
     // Метод для рекурсивного маппинг полей объекта на JSON
     private static void mapFieldsToJson(Map<String, Object> messageDB, JsonNode jsonNode) throws IllegalAccessException {
         for (Map.Entry<String,Object> field : messageDB.entrySet()) {
-            Object value = field.getValue();  
+            Object value = field.getValue();
 
             if (value != null) {
                 replaceValueInJson(jsonNode, field.getKey(), value);
@@ -138,7 +130,7 @@ public class ParserJson {
                 if (key.equalsIgnoreCase(fieldName)) {
                     // Заменяем значение, если ключ найден
                     ((ObjectNode) jsonNode).put(fieldName, value.toString());
-                    return; 
+                    return;
                 }
             }
         }
@@ -156,6 +148,20 @@ public class ParserJson {
                 }
             }
         }
+    }
+
+    /** Метод проверки обязательных полей на null или отсутствие в файле. */
+    private boolean checkingRequiredFields(Map<String, Object> record) {
+        // Формируем список обязательных полей для их проверки на null
+        Set<String> requiredFields = new HashSet<>(mappingConfiguration.getRequiredFields());
+        System.out.println("Список обязательных полей: " + requiredFields);
+        for (String regField : requiredFields) {
+            if (record.containsKey(regField) && record.get(regField) == null) {
+                log.warn("Пропускаем запись: обязательное поле {} = null или отсутствует в файле", regField);
+                return false;
+            }
+        }
+        return true;
     }
 
 }

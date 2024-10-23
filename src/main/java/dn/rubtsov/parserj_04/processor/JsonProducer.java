@@ -43,4 +43,5 @@ public class JsonProducer {
     public void close() {
         producer.close();
     }
+
 }

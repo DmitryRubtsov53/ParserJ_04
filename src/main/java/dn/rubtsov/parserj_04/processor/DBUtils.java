@@ -8,10 +8,8 @@ import java.sql.*;
 import java.util.*;
 @Service
 @Slf4j
-public class DBUtils {
-    private final String URL;
-    private final String USER;
-    private final String PASSWORD;
+public class DBUtils implements DBService{
+    private final String URL, USER, PASSWORD;
 
     public DBUtils(@Value("${spring.datasource.url}") String URL,
                    @Value("${spring.datasource.username}")String USER,
@@ -21,8 +19,7 @@ public class DBUtils {
         this.PASSWORD = PASSWORD;
     }
 
-    /** Метод динамического создания таблицы для объекта.
-     */
+    @Override
     public void createTableIfNotExists(String tableName) {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
                 "uid UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
@@ -31,7 +28,6 @@ public class DBUtils {
                 "messageId VARCHAR(255), " +
                 "productid VARCHAR(255), " +
                 "dispatchStatus INTEGER DEFAULT 0," +
-                //я
                 "registerType VARCHAR(255)," +
                 "restIn VARCHAR(255))";
 
@@ -43,8 +39,7 @@ public class DBUtils {
         }
     }
 
-    /** Метод вставки данных объектов в таблицу.
-     */
+    @Override
     public void insertRecords(Map<String, Object> data, String tableName) {
         if (data == null || data.isEmpty()) {
             log.info("Нет данных для вставки");
@@ -86,16 +81,7 @@ public class DBUtils {
         }
     }
 
-    /** Метод для создания динамического SQL-запроса для вставки.
-     */
-    private static String createInsertSQL(String tableName, List<String> fieldNames) {
-        String columns = String.join(", ", fieldNames);
-        String valuesPlaceholder = String.join(", ", Collections.nCopies(fieldNames.size(), "?"));
-        return "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + valuesPlaceholder + ")";
-    }
-
-    /** Универсальный метод для удаления таблицы.
-     */
+    @Override
     public void dropTableIfExists(String tableName) {
         String dropSQL = "DROP TABLE IF EXISTS " + tableName + " CASCADE";
         try (Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
@@ -106,11 +92,9 @@ public class DBUtils {
         }
     }
 
-    /** Метод считывания 1-й записи БД с dispatchStatus = 0 и замены его на 1.
-     * @return карта с парами ключ-значение полей считанной записи.
-     */
+    @Override
     public Map<String, Object> getAndUpdateFirstRecordWithDispatchStatus() {
-        // SQL-запрос для выборки данных из обеих таблиц с объединением
+
         String selectSQL = "SELECT uid, productid, messageid, accountingdate, registertype, restin FROM message_db WHERE dispatchStatus = 0 LIMIT 1";
         // SQL-запрос для обновления статуса записи в таблице
         String updateSQL = "UPDATE message_db SET dispatchStatus = 1 WHERE uid = ?";
