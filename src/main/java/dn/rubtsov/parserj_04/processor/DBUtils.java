@@ -95,7 +95,8 @@ public class DBUtils implements DBService{
     @Override
     public Map<String, Object> getAndUpdateFirstRecordWithDispatchStatus() {
 
-        String selectSQL = "SELECT uid, productid, messageid, accountingdate, registertype, restin FROM message_db WHERE dispatchStatus = 0 LIMIT 1";
+        String selectSQL = "SELECT uid, productid, messageid, accountingdate, registertype, restin " +
+                "FROM message_db WHERE dispatchStatus = 0 LIMIT 1";
         // SQL-запрос для обновления статуса записи в таблице
         String updateSQL = "UPDATE message_db SET dispatchStatus = 1 WHERE uid = ?";
         // Карта для хранения значений выборки

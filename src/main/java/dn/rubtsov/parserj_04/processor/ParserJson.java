@@ -19,54 +19,31 @@ import java.util.*;
 @Component
 @Slf4j
 public class ParserJson {
-    private final MappingConfiguration mappingConfiguration;
+
+    private final JsonProducer jsonProducer;
+    private final DBService dbService;
+    private final ParsingService parsingService;
     @Autowired
-    JsonProducer jsonProducer;
-    @Autowired
-    DBService dbService;
-    @Autowired
-    public ParserJson(MappingConfiguration mappingConfiguration) {
-        this.mappingConfiguration = mappingConfiguration;
+    public ParserJson(JsonProducer jsonProducer, DBService dbService,
+                      ParsingService parsingService) {
+        this.jsonProducer = jsonProducer;
+        this.dbService = dbService;
+        this.parsingService = parsingService;
     }
 
     public void processJson(String json, String tableName) throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rootNode = objectMapper.readTree(json);
+        // Список для хранения всех записей
+        List<Map<String, Object>> records = new ArrayList<>(parsingService.parsingJsonToRecordForDB(json));
 
-        // Используем список для хранения всех записей
-        List<Map<String, Object>> records = new ArrayList<>();
+        // Для отладки
+        System.out.println("Список всех записей для внесения в БД: \n" + records);
 
-        // Получаем одиночные поля
-        String accountingDate = rootNode.at(mappingConfiguration.getFieldMappings().get("accountingDate")).asText(null);
-        String messageId = rootNode.at(mappingConfiguration.getFieldMappings().get("messageId")).asText(null);
-        String productId = rootNode.at(mappingConfiguration.getFieldMappings().get("productId")).asText(null);
+        // Проверка обязательных полей и удаление не валидных записей из списка
+        parsingService.deletingRecordsWithInvalidRequiredFields(records);
 
-        // Обрабатываем массив registers
-        JsonNode registersNode = rootNode.at(mappingConfiguration.getFieldMappings().get("registers"));
-        if (registersNode.isArray()) {
-            for (JsonNode register : registersNode) {
-                // Создаем запись для каждого элемента массива
-                Map<String, Object> record = new LinkedHashMap<>();
-                record.put("productId", productId);
-                record.put("messageId", messageId);
-                record.put("accountingDate", accountingDate);
-                record.put("registerType", register.at(mappingConfiguration.getFieldMappings().get("registerType")).asText(null));
-                record.put("restIn", register.at(mappingConfiguration.getFieldMappings().get("restIn")).asText(null));
-
-                // Проверка обязательных полей
-                if (!checkingRequiredFields(record)) {
-                    continue;
-                }
-                // Добавляем запись в список
-                records.add(record);
-            }
-        }
-        // Выводим список записей для отладки
-        System.out.println(records);
-
-        // Обработка для вставки в базу данных
-        for (Map<String, Object> record : records) {
-            dbService.insertRecords(record, tableName);
+        // Обработка для вставки в БД
+        for (Map<String, Object> rec : records) {
+            dbService.insertRecords(rec, tableName);
         }
     }
 
@@ -82,24 +59,14 @@ public class ParserJson {
                 log.info("Нет данных для обработки.");
                 return;
             }
-
-            // Читаем шаблон JSON из файла --- readTempleFromFile
-            ObjectMapper objectMapper = new ObjectMapper();
-            File jsonFile = Paths.get("src", "main", "resources", "test2.json").toFile();
-
-            // Преобразовываем JSON файл в объект JsonNode
-            JsonNode jsonTemplate = null;
-            try {
-                jsonTemplate = objectMapper.readTree(jsonFile);
-            } catch (IOException e) {
-                throw new FileNotFoundException("Файла шаблона Json по указанному пути нет");
-            }
+            // Читаем шаблон JSON из файла
+            JsonNode jsonTemplate = parsingService.readTempleFromFile();
 
             // Рекурсивно мап пим объект messageDB на JSON-шаблон
             mapFieldsToJson(messageDB, jsonTemplate);
 
             // Преобразуем итоговый объект JsonNode обратно в строку
-            String json = objectMapper.writeValueAsString(jsonTemplate);
+            String json = new ObjectMapper().writeValueAsString(jsonTemplate);
 
             log.info("Сообщение: {}", json);
             jsonProducer.sendMessage(json);
@@ -149,19 +116,4 @@ public class ParserJson {
             }
         }
     }
-
-    /** Метод проверки обязательных полей на null или отсутствие в файле. */
-    private boolean checkingRequiredFields(Map<String, Object> record) {
-        // Формируем список обязательных полей для их проверки на null
-        Set<String> requiredFields = new HashSet<>(mappingConfiguration.getRequiredFields());
-        System.out.println("Список обязательных полей: " + requiredFields);
-        for (String regField : requiredFields) {
-            if (record.containsKey(regField) && record.get(regField) == null) {
-                log.warn("Пропускаем запись: обязательное поле {} = null или отсутствует в файле", regField);
-                return false;
-            }
-        }
-        return true;
-    }
-
 }
