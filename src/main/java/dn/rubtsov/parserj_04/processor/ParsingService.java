@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
+
 @Slf4j
 @Service
 public class ParsingService {
@@ -58,18 +59,25 @@ public class ParsingService {
 
     /** Метод проверки обязательных полей на null или отсутствие в файле и удаления не валидных записей из списка. */
     public List<Map<String, Object>> deletingRecordsWithInvalidRequiredFields(List<Map<String, Object>> records) {
+        // Для избежания ConcurrentModificationException при удалении в коллекции во время итерации
+        List<Map<String, Object>> validRecords = new ArrayList<>();
         // Формируем список обязательных полей для их проверки на null
-        Set<String> requiredFields = new HashSet<>(mappingConfiguration.getRequiredFields());
+        List<String> requiredFields = new ArrayList<>(mappingConfiguration.getRequiredFields());
         System.out.println("Список обязательных полей: " + requiredFields);
         for (Map <String, Object> record : records) {
+            boolean isValid = true;
             for (String regField : requiredFields) {
                 if (record.containsKey(regField) && record.get(regField) == null) {
-                    log.warn("Пропускаем запись: обязательное поле {} = null или отсутствует в файле", regField);
-                    records.remove(record);
+                    isValid = false;
+                    log.warn("Пропускаем запись: обязательное поле {} = null или отсутствует", regField);
+                    break; // Выход из цикла
                 }
             }
+            if(isValid) {
+                validRecords.add(record);
+            }
         }
-        return records;
+        return validRecords;
     }
     /** Метод читает шаблон JSON из файла */
     public JsonNode readTempleFromFile () throws IOException {

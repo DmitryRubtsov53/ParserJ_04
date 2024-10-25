@@ -15,5 +15,5 @@ import java.util.Set;
 @Setter
 public class MappingConfiguration {
     private Map<String, String> fieldMappings;
-    private Set<String> requiredFields;
+    private List<String> requiredFields;
 }
