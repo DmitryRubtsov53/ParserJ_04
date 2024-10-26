@@ -1,7 +1,5 @@
 package dn.rubtsov.parserj_04.processor;
 
-import org.springframework.stereotype.Repository;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

@@ -39,10 +39,11 @@ public class ParserJson {
         System.out.println("Список всех записей для внесения в БД: \n" + records);
 
         // Проверка обязательных полей и удаление не валидных записей из списка
-        parsingService.deletingRecordsWithInvalidRequiredFields(records);
+        records = parsingService.deletingRecordsWithInvalidRequiredFields(records);
 
         // Обработка для вставки в БД
         for (Map<String, Object> rec : records) {
+            System.out.println("record для вставки: " + rec);
             dbService.insertRecords(rec, tableName);
         }
     }

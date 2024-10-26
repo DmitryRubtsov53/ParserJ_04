@@ -59,7 +59,7 @@ public class ParsingService {
 
     /** Метод проверки обязательных полей на null или отсутствие в файле и удаления не валидных записей из списка. */
     public List<Map<String, Object>> deletingRecordsWithInvalidRequiredFields(List<Map<String, Object>> records) {
-        // Для избежания ConcurrentModificationException при удалении в коллекции во время итерации
+
         List<Map<String, Object>> validRecords = new ArrayList<>();
         // Формируем список обязательных полей для их проверки на null
         List<String> requiredFields = new ArrayList<>(mappingConfiguration.getRequiredFields());
@@ -67,6 +67,7 @@ public class ParsingService {
         for (Map <String, Object> record : records) {
             boolean isValid = true;
             for (String regField : requiredFields) {
+                System.out.println("record.get(regField) = " + record.get(regField));
                 if (record.containsKey(regField) && record.get(regField) == null) {
                     isValid = false;
                     log.warn("Пропускаем запись: обязательное поле {} = null или отсутствует", regField);
@@ -77,6 +78,7 @@ public class ParsingService {
                 validRecords.add(record);
             }
         }
+        System.out.println("validRecords: " + validRecords);
         return validRecords;
     }
     /** Метод читает шаблон JSON из файла */

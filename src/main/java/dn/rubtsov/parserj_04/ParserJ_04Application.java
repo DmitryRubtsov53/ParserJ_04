@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableConfigurationProperties
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "dn.rubtsov.parserj_04")
 @EnableScheduling
 public class ParserJ_04Application  {
     @Autowired
